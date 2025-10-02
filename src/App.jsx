@@ -14,7 +14,6 @@ const App = () => {
   const [activeView, setActiveView] = useState('group');
   const [showDocuments, setShowDocuments] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKeys, setApiKeys] = useState({ claude: '', deepseek: '' });
 
   const { messages, addMessage, isLoading, setIsLoading } = useMessages();
   const { aiAgents, updateAgent } = useAIAgents();
@@ -51,7 +50,7 @@ const App = () => {
           aiConversationTurns={aiConversationTurns}
           onTogglePause={togglePause}
           onStopConversation={stopAIConversation}
-          onStartConversation={() => startAIConversation(apiKeys)}
+          onStartConversation={startAIConversation}
           isLoading={isLoading}
         />
 
@@ -70,7 +69,6 @@ const App = () => {
           documents={documents}
           addMessage={addMessage}
           setIsLoading={setIsLoading}
-          apiKeys={apiKeys}
         />
       </div>
 
@@ -86,8 +84,6 @@ const App = () => {
 
       {showSettings && (
         <SettingsModal
-          apiKeys={apiKeys}
-          setApiKeys={setApiKeys}
           aiAgents={aiAgents}
           updateAgent={updateAgent}
           onClose={() => setShowSettings(false)}
