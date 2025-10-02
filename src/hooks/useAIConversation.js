@@ -8,7 +8,7 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
   const [aiConversationTurns, setAiConversationTurns] = useState(0);
   const conversationTimeout = useRef(null);
 
-  const continueAIConversation = async (apiKeys) => {
+  const continueAIConversation = async () => {
     if (isPaused || !isAIConversation) return;
 
     setIsLoading(true);
@@ -24,13 +24,9 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
       const conversationHistory = getConversationHistory(messages);
       
       const lastMessage = messages.slice(-1)[0];
-      const prompt = `${context}\
-\
-You are in a discussion with ${previousAI.name}. ${previousAI.name} just said: \"${lastMessage.content}\"\
-\
-Respond naturally and continue the discussion.`;
+      const prompt = `${context}\n\nYou are in a discussion with ${previousAI.name}. ${previousAI.name} just said: "${lastMessage.content}"\n\nRespond naturally and continue the discussion.`;
 
-      const response = await sendMessageToAI(nextAI.id, prompt, conversationHistory, apiKeys);
+      const response = await sendMessageToAI(nextAI.id, prompt, conversationHistory);
 
       addMessage({
         id: Date.now(),
@@ -44,7 +40,7 @@ Respond naturally and continue the discussion.`;
       setAiConversationTurns(prev => prev + 1);
 
       if (!isPaused && isAIConversation && aiConversationTurns < 10) {
-        conversationTimeout.current = setTimeout(() => continueAIConversation(apiKeys), 3000);
+        conversationTimeout.current = setTimeout(() => continueAIConversation(), 3000);
       }
     } catch (error) {
       console.error('Error in AI conversation:', error);
@@ -53,7 +49,7 @@ Respond naturally and continue the discussion.`;
     }
   };
 
-  const startAIConversation = async (apiKeys) => {
+  const startAIConversation = async () => {
     setIsAIConversation(true);
     setAiConversationTurns(0);
     setIsLoading(true);
@@ -61,15 +57,13 @@ Respond naturally and continue the discussion.`;
     try {
       const activeAgents = aiAgents.filter(a => a.active);
       const [ai1] = activeAgents;
-const topic = "Discutete insieme la migliore strategia per una campagna marketing innovativa per un cliente del settore tech, considerando il contesto della conversazione fino ad ora.";      const context = getAIContext(ai1, documents);
+      const topic = "Discutete insieme la migliore strategia per una campagna marketing innovativa per un cliente del settore tech, considerando il contesto della conversazione fino ad ora.";
+
+      const context = getAIContext(ai1, documents);
       const conversationHistory = getConversationHistory(messages);
-      const initialPrompt = `${context}\
-\
-You are starting a focused discussion. Topic: ${topic}\
-\
-Start the conversation with your perspective.`;
+      const initialPrompt = `${context}\n\nYou are starting a focused discussion. Topic: ${topic}\n\nStart the conversation with your perspective.`;
       
-      const response = await sendMessageToAI(ai1.id, initialPrompt, conversationHistory, apiKeys);
+      const response = await sendMessageToAI(ai1.id, initialPrompt, conversationHistory);
 
       addMessage({
         id: Date.now(),
@@ -83,7 +77,7 @@ Start the conversation with your perspective.`;
       setIsLoading(false);
       setAiConversationTurns(1);
 
-      conversationTimeout.current = setTimeout(() => continueAIConversation(apiKeys), 3000);
+      conversationTimeout.current = setTimeout(() => continueAIConversation(), 3000);
     } catch (error) {
       console.error('Error starting AI conversation:', error);
       setIsLoading(false);
