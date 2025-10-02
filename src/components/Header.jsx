@@ -1,13 +1,15 @@
 import React from 'react';
-import { Pause, Play, X, MessageSquare } from 'lucide-react';
+import { Pause, Play, X, MessageSquare, Zap, ZapOff } from 'lucide-react';
 
 const Header = ({
   activeView,
   aiAgents,
   isAIConversation,
   isPaused,
+  autoMode,
   aiConversationTurns,
   onTogglePause,
+  onToggleAutoMode,
   onStopConversation,
   onStartConversation,
   isLoading
@@ -25,9 +27,9 @@ const Header = ({
   const getSubtitle = () => {
     if (activeView === 'group') return 'Collaborate with all AI agents';
     if (activeView === 'ai-conversation') {
-      return isAIConversation 
-        ? `AI Discussion in progress (Turn ${aiConversationTurns}/10)`
-        : 'Start or observe AI agents discussing';
+      if (!isAIConversation) return 'Start or observe AI agents discussing';
+      const modeText = autoMode ? '🤖 Auto Mode' : '✋ Manual Mode';
+      return `${modeText} - Turn ${aiConversationTurns}/20`;
     }
     if (activeView.startsWith('private-')) return 'One-on-one conversation (other AIs cannot see this)';
     return '';
@@ -44,6 +46,18 @@ const Header = ({
         <div className="flex gap-2">
           {isAIConversation ? (
             <>
+              <button
+                onClick={onToggleAutoMode}
+                className={`px-4 py-2 rounded flex items-center gap-2 ${
+                  autoMode 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-orange-600 hover:bg-orange-700'
+                }`}
+                title={autoMode ? 'Switch to Manual Mode' : 'Switch to Auto Mode'}
+              >
+                {autoMode ? <Zap size={18} /> : <ZapOff size={18} />}
+                {autoMode ? 'Auto' : 'Manual'}
+              </button>
               <button
                 onClick={onTogglePause}
                 className={`px-4 py-2 rounded flex items-center gap-2 ${
