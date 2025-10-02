@@ -1,14 +1,7 @@
-import React, { useState } from 'react';
-import { X, Key, Save } from 'lucide-react';
+import React from 'react';
+import { X, Server } from 'lucide-react';
 
-const SettingsModal = ({ apiKeys, setApiKeys, aiAgents, updateAgent, onClose }) => {
-  const [localKeys, setLocalKeys] = useState(apiKeys);
-
-  const handleSave = () => {
-    setApiKeys(localKeys);
-    onClose();
-  };
-
+const SettingsModal = ({ aiAgents, updateAgent, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -22,37 +15,16 @@ const SettingsModal = ({ apiKeys, setApiKeys, aiAgents, updateAgent, onClose }) 
         <div className="p-6 space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Key size={20} />
-              API Keys
+              <Server size={20} />
+              Backend Configuration
             </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Claude API Key</label>
-                <input
-                  type="password"
-                  value={localKeys.claude}
-                  onChange={(e) => setLocalKeys({ ...localKeys, claude: e.target.value })}
-                  placeholder="sk-ant-..."
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Get your key from: https://console.anthropic.com
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">DeepSeek API Key</label>
-                <input
-                  type="password"
-                  value={localKeys.deepseek}
-                  onChange={(e) => setLocalKeys({ ...localKeys, deepseek: e.target.value })}
-                  placeholder="sk-..."
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Get your key from: https://platform.deepseek.com
-                </p>
-              </div>
+            <div className="bg-gray-700 rounded-lg p-4">
+              <p className="text-sm text-gray-300 mb-2">
+                API keys are now managed in the backend for security.
+              </p>
+              <p className="text-xs text-gray-400">
+                Configure your API keys in: <code className="bg-gray-900 px-2 py-1 rounded">backend/.env</code>
+              </p>
             </div>
           </div>
 
@@ -94,19 +66,12 @@ const SettingsModal = ({ apiKeys, setApiKeys, aiAgents, updateAgent, onClose }) 
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-700 flex justify-end gap-2 sticky bottom-0 bg-gray-800">
+        <div className="p-6 border-t border-gray-700 flex justify-end sticky bottom-0 bg-gray-800">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded flex items-center gap-2"
-          >
-            <Save size={18} />
-            Save Settings
+            Close
           </button>
         </div>
       </div>
