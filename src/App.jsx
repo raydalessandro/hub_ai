@@ -21,10 +21,12 @@ const App = () => {
   const {
     isAIConversation,
     isPaused,
+    autoMode,
     aiConversationTurns,
     startAIConversation,
     stopAIConversation,
-    togglePause
+    togglePause,
+    toggleAutoMode
   } = useAIConversation(messages, addMessage, aiAgents, documents, setIsLoading);
 
   return (
@@ -47,8 +49,10 @@ const App = () => {
           aiAgents={aiAgents}
           isAIConversation={isAIConversation}
           isPaused={isPaused}
+          autoMode={autoMode}
           aiConversationTurns={aiConversationTurns}
           onTogglePause={togglePause}
+          onToggleAutoMode={toggleAutoMode}
           onStopConversation={stopAIConversation}
           onStartConversation={startAIConversation}
           isLoading={isLoading}
@@ -63,12 +67,14 @@ const App = () => {
         <InputArea
           activeView={activeView}
           isAIConversation={isAIConversation}
+          autoMode={autoMode}
           isLoading={isLoading}
           messages={messages}
           aiAgents={aiAgents}
           documents={documents}
           addMessage={addMessage}
           setIsLoading={setIsLoading}
+          onStopAutoMode={toggleAutoMode}
         />
       </div>
 
