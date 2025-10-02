@@ -13,18 +13,44 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
 
     setIsLoading(true);
     const activeAgents = aiAgents.filter(a => a.active);
+    
+    if (activeAgents.length < 2) {
+      console.error('Need at least 2 active AI agents for conversation');
+      setIsLoading(false);
+      return;
+    }
+
     const [ai1, ai2] = activeAgents;
     
     try {
+      // Determina quale AI deve parlare (si alternano)
       const lastAISender = messages.filter(m => m.sender !== 'human').slice(-1)[0]?.sender;
-      const nextAI = lastAISender === ai1.id ? ai2 : ai1;
+      const nextAI = !lastAISender || lastAISender === ai2.id ? ai1 : ai2;
       const previousAI = lastAISender === ai1.id ? ai1 : ai2;
 
       const context = getAIContext(nextAI, documents);
-      const conversationHistory = getConversationHistory(messages);
       
+      // Costruisci history SOLO con messaggi AI-AI (escludi umano durante conversazione)
+      const aiOnlyMessages = messages.filter(m => {
+        // Include solo messaggi delle AI durante la conversazione AI-AI
+        return m.sender === ai1.id || m.sender === ai2.id;
+      });
+      
+      const conversationHistory = aiOnlyMessages.map(m => ({
+        role: m.sender === nextAI.id ? 'assistant' : 'user',
+        content: m.content
+      }));
+
       const lastMessage = messages.slice(-1)[0];
-      const prompt = `${context}\n\nYou are in a discussion with ${previousAI.name}. ${previousAI.name} just said: "${lastMessage.content}"\n\nRespond naturally and continue the discussion.`;
+      
+      let prompt;
+      if (aiConversationTurns === 0) {
+        // Primo messaggio - inizia la discussione
+        prompt = `${context}\n\nYou are ${nextAI.name}, starting a professional discussion with ${previousAI.name} (a ${previousAI.role}) about marketing strategy for a tech client. Start the conversation by sharing your perspective on innovative marketing approaches.`;
+      } else {
+        // Messaggi successivi - rispondi all'altro AI
+        prompt = `${context}\n\nYou are ${nextAI.name} in a professional discussion with ${previousAI.name}. ${previousAI.name} just said: "${lastMessage.content}"\n\nRespond directly to ${previousAI.name}'s point, building on what they said. Keep it conversational and collaborative.`;
+      }
 
       const response = await sendMessageToAI(nextAI.id, prompt, conversationHistory);
 
@@ -37,33 +63,68 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
         color: nextAI.color
       });
 
-      setAiConversationTurns(prev => prev + 1);
+      const newTurnCount = aiConversationTurns + 1;
+      setAiConversationTurns(newTurnCount);
 
-      if (!isPaused && isAIConversation && aiConversationTurns < 10) {
+      // Continua se non in pausa e non superato il limite
+      if (!isPaused && isAIConversation && newTurnCount < 10) {
         conversationTimeout.current = setTimeout(() => continueAIConversation(), 3000);
+      } else if (newTurnCount >= 10) {
+        // Raggiunto limite turni
+        addMessage({
+          id: Date.now(),
+          sender: 'system',
+          senderName: 'System',
+          content: 'AI conversation completed (10 turns reached). You can start a new one or continue the group chat.',
+          timestamp: new Date().toLocaleTimeString(),
+          color: 'bg-blue-600'
+        });
+        stopAIConversation();
       }
     } catch (error) {
       console.error('Error in AI conversation:', error);
+      addMessage({
+        id: Date.now(),
+        sender: 'system',
+        senderName: 'System',
+        content: `Error in AI conversation: ${error.message}`,
+        timestamp: new Date().toLocaleTimeString(),
+        color: 'bg-red-600'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const startAIConversation = async () => {
+    const activeAgents = aiAgents.filter(a => a.active);
+    
+    if (activeAgents.length < 2) {
+      addMessage({
+        id: Date.now(),
+        sender: 'system',
+        senderName: 'System',
+        content: 'Please activate at least 2 AI agents to start an AI-to-AI conversation.',
+        timestamp: new Date().toLocaleTimeString(),
+        color: 'bg-red-600'
+      });
+      return;
+    }
+
     setIsAIConversation(true);
     setAiConversationTurns(0);
     setIsLoading(true);
 
     try {
-      const activeAgents = aiAgents.filter(a => a.active);
       const [ai1] = activeAgents;
-      const topic = "Discutete insieme la migliore strategia per una campagna marketing innovativa per un cliente del settore tech, considerando il contesto della conversazione fino ad ora.";
+      const topic = "innovative marketing strategies for a tech sector client";
 
       const context = getAIContext(ai1, documents);
-      const conversationHistory = getConversationHistory(messages);
-      const initialPrompt = `${context}\n\nYou are starting a focused discussion. Topic: ${topic}\n\nStart the conversation with your perspective.`;
       
-      const response = await sendMessageToAI(ai1.id, initialPrompt, conversationHistory);
+      // Primo messaggio - solo contesto base
+      const initialPrompt = `${context}\n\nYou are ${ai1.name}, starting a professional discussion about ${topic}. Share your initial perspective and invite collaboration.`;
+      
+      const response = await sendMessageToAI(ai1.id, initialPrompt, []);
 
       addMessage({
         id: Date.now(),
@@ -77,9 +138,18 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
       setIsLoading(false);
       setAiConversationTurns(1);
 
+      // Avvia la conversazione alternata
       conversationTimeout.current = setTimeout(() => continueAIConversation(), 3000);
     } catch (error) {
       console.error('Error starting AI conversation:', error);
+      addMessage({
+        id: Date.now(),
+        sender: 'system',
+        senderName: 'System',
+        content: `Error starting AI conversation: ${error.message}`,
+        timestamp: new Date().toLocaleTimeString(),
+        color: 'bg-red-600'
+      });
       setIsLoading(false);
     }
   };
@@ -95,6 +165,10 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
 
   const togglePause = () => {
     setIsPaused(!isPaused);
+    if (isPaused && isAIConversation) {
+      // Se riprende dalla pausa, continua la conversazione
+      conversationTimeout.current = setTimeout(() => continueAIConversation(), 1000);
+    }
   };
 
   return {
