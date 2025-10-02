@@ -13,18 +13,14 @@ const InputArea = ({
   documents,
   addMessage,
   setIsLoading,
-  onStopAutoMode  // Nuovo prop
+  onToggleAutoMode
 }) => {
   const [inputMessage, setInputMessage] = useState('');
 
   const handleSendMessage = async (isIntervention = false) => {
     if (!inputMessage.trim() || isLoading) return;
 
-    // Se è un intervento durante auto mode, fermalo
-    if (isIntervention && autoMode && onStopAutoMode) {
-      onStopAutoMode();
-    }
-
+    // Se intervieni in auto mode, NON disattivare - lascia che continui
     const newMessage = {
       id: Date.now(),
       sender: 'human',
@@ -46,7 +42,7 @@ const InputArea = ({
 
           const response = await sendMessageToAI(
             agent.id,
-            `${context}\n\nRespond naturally to the conversation. Latest message from Human: ${inputMessage}`,
+            `${context}\n\nHuman said: ${inputMessage}\n\nRespond naturally.`,
             conversationHistory
           );
 
@@ -61,6 +57,8 @@ const InputArea = ({
 
           await new Promise(resolve => setTimeout(resolve, 500));
         }
+        
+        // Dopo l'intervento, se era auto mode, continuerà automaticamente
       } else if (activeView.startsWith('private-')) {
         const aiId = activeView.replace('private-', '');
         const agent = aiAgents.find(a => a.id === aiId);
@@ -69,7 +67,7 @@ const InputArea = ({
 
         const response = await sendMessageToAI(
           aiId,
-          `${context}\n\nThis is a private conversation. Respond to: ${inputMessage}`,
+          `${context}\n\nPrivate chat. Human: ${inputMessage}`,
           conversationHistory
         );
 
@@ -83,7 +81,7 @@ const InputArea = ({
         });
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error:', error);
       addMessage({
         id: Date.now(),
         sender: 'system',
@@ -98,6 +96,7 @@ const InputArea = ({
   };
 
   const showInterventionButton = activeView === 'ai-conversation' && isAIConversation;
+  const isInputDisabled = showInterventionButton && autoMode && isLoading;
 
   return (
     <div className="bg-gray-800 border-t border-gray-700 p-4">
@@ -106,16 +105,16 @@ const InputArea = ({
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(showInterventionButton)}
+          onKeyPress={(e) => e.key === 'Enter' && !isInputDisabled && handleSendMessage(showInterventionButton)}
           placeholder={
             showInterventionButton
               ? autoMode 
-                ? "Intervene (will pause auto mode)..."
-                : "Type to respond..."
+                ? "Intervene anytime (AIs will continue after)..."
+                : "Type to respond (click Auto to resume)..."
               : "Type your message..."
           }
           className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          disabled={isLoading}
+          disabled={isLoading && !showInterventionButton}
         />
         {showInterventionButton ? (
           <button
@@ -137,6 +136,11 @@ const InputArea = ({
           </button>
         )}
       </div>
+      {showInterventionButton && autoMode && (
+        <p className="text-xs text-gray-400 mt-2">
+          💡 Auto mode is ON - AIs are conversing automatically. You can intervene anytime!
+        </p>
+      )}
     </div>
   );
 };
