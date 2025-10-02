@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { sendMessageToAI } from '../services/aiService';
 import { getAIContext, getConversationHistory } from '../utils/contextUtils';
 
@@ -6,38 +6,68 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
   const [isAIConversation, setIsAIConversation] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [aiConversationTurns, setAiConversationTurns] = useState(0);
-  const [autoMode, setAutoMode] = useState(true); // Nuova: modalità automatica
+  const [autoMode, setAutoMode] = useState(true);
   const conversationTimeout = useRef(null);
+
+  // Effetto che monitora quando può continuare la conversazione
+  useEffect(() => {
+    if (isAIConversation && autoMode && !isPaused && !setIsLoading) {
+      // Controlla se può continuare
+      const aiMessages = messages.filter(m => 
+        m.sender !== 'human' && m.sender !== 'system'
+      );
+      
+      // Se ci sono messaggi AI e siamo in auto mode, continua
+      if (aiMessages.length > 0 && aiConversationTurns < 20) {
+        if (conversationTimeout.current) {
+          clearTimeout(conversationTimeout.current);
+        }
+        conversationTimeout.current = setTimeout(() => {
+          continueAIConversation();
+        }, 4000);
+      }
+    }
+
+    return () => {
+      if (conversationTimeout.current) {
+        clearTimeout(conversationTimeout.current);
+      }
+    };
+  }, [messages, isAIConversation, autoMode, isPaused]);
 
   const continueAIConversation = async () => {
     if (isPaused || !isAIConversation || !autoMode) return;
 
-    setIsLoading(true);
     const activeAgents = aiAgents.filter(a => a.active);
     
     if (activeAgents.length < 2) {
-      console.error('Need at least 2 active AI agents for conversation');
-      setIsLoading(false);
+      console.error('Need at least 2 active AI agents');
       return;
     }
 
+    setIsLoading(true);
     const [ai1, ai2] = activeAgents;
     
     try {
-      // Determina quale AI deve parlare (si alternano)
-      const aiMessages = messages.filter(m => m.sender === ai1.id || m.sender === ai2.id);
-      const lastAISender = aiMessages.length > 0 ? aiMessages[aiMessages.length - 1].sender : null;
+      // Determina quale AI deve parlare
+      const aiMessages = messages.filter(m => 
+        m.sender === ai1.id || m.sender === ai2.id
+      );
+      const lastAISender = aiMessages.length > 0 
+        ? aiMessages[aiMessages.length - 1].sender 
+        : null;
+      
       const nextAI = !lastAISender || lastAISender === ai2.id ? ai1 : ai2;
       const previousAI = lastAISender === ai1.id ? ai1 : ai2;
 
       const context = getAIContext(nextAI, documents);
       
-      // Costruisci history completo ma con ruoli corretti
+      // History completo
       const conversationHistory = messages
         .filter(m => m.sender !== 'system')
         .map(m => {
           if (m.sender === 'human') {
-            return { role: 'user', content: `[Human intervened]: ${m.content}` };
+            return { role: 'user', content: `[Human]: ${m.content}` };
           } else if (m.sender === nextAI.id) {
             return { role: 'assistant', content: m.content };
           } else {
@@ -48,15 +78,16 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
       const lastMessage = messages.slice(-1)[0];
       
       let prompt;
-      if (aiConversationTurns === 0 && (!lastMessage || lastMessage.sender !== 'human')) {
-        // Primo messaggio - inizia la discussione
-        prompt = `${context}\n\nYou are ${nextAI.name}, starting a professional discussion with ${previousAI.name} (a ${previousAI.role}) about innovative marketing strategies for a tech client. Start the conversation naturally.`;
-      } else if (lastMessage && lastMessage.sender === 'human') {
-        // Ultima cosa era un intervento umano - rispondi all'umano
-        prompt = `${context}\n\nThe human just intervened in your discussion with ${previousAI.name}. They said: "${lastMessage.content}"\n\nRespond to the human's point, then naturally bring ${previousAI.name} back into the conversation.`;
+      if (!lastMessage || (lastMessage.sender !== ai1.id && lastMessage.sender !== ai2.id)) {
+        // Se non ci sono messaggi AI o l'ultimo è umano
+        if (lastMessage && lastMessage.sender === 'human') {
+          prompt = `${context}\n\nThe human just said: "${lastMessage.content}"\n\nYou are ${nextAI.name}. Respond to the human, then continue your discussion with ${previousAI.name}.`;
+        } else {
+          prompt = `${context}\n\nYou are ${nextAI.name}. Continue or start the discussion with ${previousAI.name} about innovative marketing strategies.`;
+        }
       } else {
-        // Conversazione normale AI-AI
-        prompt = `${context}\n\nYou are ${nextAI.name} in discussion with ${previousAI.name}. ${previousAI.name} just said: "${lastMessage.content}"\n\nRespond directly to their point and continue the discussion naturally.`;
+        // Conversazione AI-AI normale
+        prompt = `${context}\n\nYou are ${nextAI.name}. ${previousAI.name} just said: "${lastMessage.content}"\n\nRespond naturally and continue the discussion.`;
       }
 
       const response = await sendMessageToAI(nextAI.id, prompt, conversationHistory);
@@ -73,15 +104,12 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
       const newTurnCount = aiConversationTurns + 1;
       setAiConversationTurns(newTurnCount);
 
-      // Continua automaticamente se in auto mode
-      if (!isPaused && isAIConversation && autoMode && newTurnCount < 20) {
-        conversationTimeout.current = setTimeout(() => continueAIConversation(), 4000);
-      } else if (newTurnCount >= 20) {
+      if (newTurnCount >= 20) {
         addMessage({
-          id: Date.now(),
+          id: Date.now() + 1,
           sender: 'system',
           senderName: 'System',
-          content: '🎯 AI conversation reached 20 turns. Click "Resume Auto" to continue or "Stop" to end.',
+          content: '🎯 20 turns reached. Click "Auto" to continue or "Stop" to end.',
           timestamp: new Date().toLocaleTimeString(),
           color: 'bg-blue-600'
         });
@@ -110,7 +138,7 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
         id: Date.now(),
         sender: 'system',
         senderName: 'System',
-        content: '⚠️ Please activate at least 2 AI agents to start an AI-to-AI conversation.',
+        content: '⚠️ Activate at least 2 AI agents first.',
         timestamp: new Date().toLocaleTimeString(),
         color: 'bg-red-600'
       });
@@ -126,7 +154,7 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
       const [ai1] = activeAgents;
       const context = getAIContext(ai1, documents);
       
-      const initialPrompt = `${context}\n\nYou are ${ai1.name}, starting a professional discussion about innovative marketing strategies for a tech client. Share your initial perspective naturally.`;
+      const initialPrompt = `${context}\n\nYou are ${ai1.name}. Start a professional discussion about innovative marketing strategies for a tech client.`;
       
       const response = await sendMessageToAI(ai1.id, initialPrompt, []);
 
@@ -139,18 +167,17 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
         color: ai1.color
       });
 
-      setIsLoading(false);
       setAiConversationTurns(1);
+      setIsLoading(false);
 
-      // Avvia la conversazione automatica
-      conversationTimeout.current = setTimeout(() => continueAIConversation(), 4000);
+      // Il useEffect si occuperà di continuare
     } catch (error) {
-      console.error('Error starting AI conversation:', error);
+      console.error('Error starting:', error);
       addMessage({
         id: Date.now(),
         sender: 'system',
         senderName: 'System',
-        content: `❌ Error starting: ${error.message}`,
+        content: `❌ ${error.message}`,
         timestamp: new Date().toLocaleTimeString(),
         color: 'bg-red-600'
       });
@@ -159,40 +186,34 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
   };
 
   const stopAIConversation = () => {
+    if (conversationTimeout.current) {
+      clearTimeout(conversationTimeout.current);
+    }
     setIsAIConversation(false);
     setIsPaused(false);
     setAutoMode(true);
     setAiConversationTurns(0);
-    if (conversationTimeout.current) {
-      clearTimeout(conversationTimeout.current);
-    }
   };
 
   const togglePause = () => {
     setIsPaused(!isPaused);
-    if (isPaused && isAIConversation && autoMode) {
-      // Riprende dalla pausa
-      conversationTimeout.current = setTimeout(() => continueAIConversation(), 1000);
-    }
   };
 
   const toggleAutoMode = () => {
-    const newAutoMode = !autoMode;
-    setAutoMode(newAutoMode);
+    setAutoMode(!autoMode);
     
-    if (newAutoMode && isAIConversation && !isPaused) {
-      // Riattiva modalità automatica
+    if (!autoMode && isAIConversation && !isPaused) {
+      // Riattiva auto mode
       addMessage({
         id: Date.now(),
         sender: 'system',
         senderName: 'System',
-        content: '▶️ Auto mode resumed - AIs will continue conversing automatically',
+        content: '▶️ Auto mode resumed',
         timestamp: new Date().toLocaleTimeString(),
         color: 'bg-green-600'
       });
-      conversationTimeout.current = setTimeout(() => continueAIConversation(), 2000);
-    } else if (!newAutoMode) {
-      // Disattiva modalità automatica
+    } else if (autoMode) {
+      // Disattiva auto mode
       if (conversationTimeout.current) {
         clearTimeout(conversationTimeout.current);
       }
@@ -200,17 +221,10 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
         id: Date.now(),
         sender: 'system',
         senderName: 'System',
-        content: '⏸️ Auto mode paused - AIs will wait for your intervention',
+        content: '⏸️ Auto mode paused',
         timestamp: new Date().toLocaleTimeString(),
         color: 'bg-yellow-600'
       });
-    }
-  };
-
-  const resumeAfterIntervention = () => {
-    if (isAIConversation && !autoMode) {
-      setAutoMode(true);
-      conversationTimeout.current = setTimeout(() => continueAIConversation(), 2000);
     }
   };
 
@@ -222,7 +236,6 @@ export const useAIConversation = (messages, addMessage, aiAgents, documents, set
     startAIConversation,
     stopAIConversation,
     togglePause,
-    toggleAutoMode,
-    resumeAfterIntervention
+    toggleAutoMode
   };
 };
