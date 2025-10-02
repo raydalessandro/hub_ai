@@ -1,14 +1,16 @@
 import React from 'react';
-import { Users, User, FileText, Bot } from 'lucide-react';
+import { Users, User, FileText, Bot, Settings } from 'lucide-react';
 
-const Sidebar = ({ 
-  activeView, 
-  setActiveView, 
-  aiAgents, 
-  messages, 
-  isAIConversation,
+const Sidebar = ({
+  activeView,
+  setActiveView,
+  aiAgents,
   documents,
-  setShowDocuments 
+  messages,
+  showDocuments,
+  setShowDocuments,
+  isAIConversation,
+  onSettingsClick
 }) => {
   return (
     <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
@@ -28,7 +30,9 @@ const Sidebar = ({
           >
             <Users size={18} />
             <span className="text-sm">Group Chat</span>
-            <span className="ml-auto text-xs bg-gray-900 px-2 py-0.5 rounded">{messages.length}</span>
+            <span className="ml-auto text-xs bg-gray-900 px-2 py-0.5 rounded">
+              {messages.length}
+            </span>
           </button>
           <button
             onClick={() => setActiveView('ai-conversation')}
@@ -64,14 +68,21 @@ const Sidebar = ({
           ))}
         </div>
 
-        <div>
-          <h3 className="text-xs font-semibold text-gray-400 mb-2">DOCUMENTS</h3>
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold text-gray-400 mb-2">MANAGEMENT</h3>
           <button
-            onClick={() => setShowDocuments(prev => !prev)}
-            className="w-full flex items-center gap-2 p-2 rounded hover:bg-gray-700 transition"
+            onClick={() => setShowDocuments(!showDocuments)}
+            className="w-full flex items-center gap-2 p-2 rounded hover:bg-gray-700 transition mb-1"
           >
             <FileText size={18} />
-            <span className="text-sm">Manage ({documents.length})</span>
+            <span className="text-sm">Documents ({documents.length})</span>
+          </button>
+          <button
+            onClick={onSettingsClick}
+            className="w-full flex items-center gap-2 p-2 rounded hover:bg-gray-700 transition"
+          >
+            <Settings size={18} />
+            <span className="text-sm">Settings</span>
           </button>
         </div>
       </div>
@@ -91,70 +102,3 @@ const Sidebar = ({
 };
 
 export default Sidebar;
-
-// ============================================================================
-// FILE: src/components/ChatArea.jsx
-// ============================================================================
-
-import React from 'react';
-import ChatHeader from './ChatHeader';
-import MessageList from './MessageList';
-import ChatInput from './ChatInput';
-
-const ChatArea = ({ 
-  activeView,
-  messages,
-  inputMessage,
-  setInputMessage,
-  isLoading,
-  isAIConversation,
-  isPaused,
-  setIsPaused,
-  aiConversationTurns,
-  aiAgents,
-  handleSendMessage,
-  startAIConversation,
-  stopAIConversation,
-  messagesEndRef
-}) => {
-  const filteredMessages = activeView.startsWith('private-') 
-    ? messages.filter(m => {
-        const aiId = activeView.replace('private-', '');
-        return m.sender === 'human' || m.sender === aiId;
-      })
-    : messages;
-
-  return (
-    <div className="flex-1 flex flex-col">
-      <ChatHeader 
-        activeView={activeView}
-        aiAgents={aiAgents}
-        isAIConversation={isAIConversation}
-        isPaused={isPaused}
-        setIsPaused={setIsPaused}
-        aiConversationTurns={aiConversationTurns}
-        startAIConversation={startAIConversation}
-        stopAIConversation={stopAIConversation}
-        isLoading={isLoading}
-      />
-
-      <MessageList 
-        messages={filteredMessages}
-        activeView={activeView}
-        isLoading={isLoading}
-        messagesEndRef={messagesEndRef}
-      />
-
-      <ChatInput 
-        activeView={activeView}
-        inputMessage={inputMessage}
-        setInputMessage={setInputMessage}
-        isLoading={isLoading}
-        isAIConversation={isAIConversation}
-        handleSendMessage={handleSendMessage}
-      />
-    </div>
-  );
-};
-
-export default ChatArea;
