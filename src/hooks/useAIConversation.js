@@ -61,8 +61,7 @@ Respond naturally and continue the discussion.`;
     try {
       const activeAgents = aiAgents.filter(a => a.active);
       const [ai1] = activeAgents;
-const topic = "Discutete insieme la migliore strategia per una campagna marketing innovativa per un cliente del settore tech, considerando il contesto della conversazione fino ad ora.";
-      const context = getAIContext(ai1, documents);
+const topic = "Discutete insieme la migliore strategia per una campagna marketing innovativa per un cliente del settore tech, considerando il contesto della conversazione fino ad ora.";      const context = getAIContext(ai1, documents);
       const conversationHistory = getConversationHistory(messages);
       const initialPrompt = `${context}\
 \
