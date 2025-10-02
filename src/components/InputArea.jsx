@@ -6,17 +6,24 @@ import { getAIContext, getConversationHistory } from '../utils/contextUtils';
 const InputArea = ({
   activeView,
   isAIConversation,
+  autoMode,
   isLoading,
   messages,
   aiAgents,
   documents,
   addMessage,
-  setIsLoading
+  setIsLoading,
+  onStopAutoMode  // Nuovo prop
 }) => {
   const [inputMessage, setInputMessage] = useState('');
 
   const handleSendMessage = async (isIntervention = false) => {
     if (!inputMessage.trim() || isLoading) return;
+
+    // Se è un intervento durante auto mode, fermalo
+    if (isIntervention && autoMode && onStopAutoMode) {
+      onStopAutoMode();
+    }
 
     const newMessage = {
       id: Date.now(),
@@ -90,6 +97,8 @@ const InputArea = ({
     }
   };
 
+  const showInterventionButton = activeView === 'ai-conversation' && isAIConversation;
+
   return (
     <div className="bg-gray-800 border-t border-gray-700 p-4">
       <div className="flex gap-2">
@@ -97,16 +106,18 @@ const InputArea = ({
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(activeView === 'ai-conversation' && isAIConversation)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(showInterventionButton)}
           placeholder={
-            activeView === 'ai-conversation' && isAIConversation
-              ? "Intervene in AI conversation..."
+            showInterventionButton
+              ? autoMode 
+                ? "Intervene (will pause auto mode)..."
+                : "Type to respond..."
               : "Type your message..."
           }
           className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
           disabled={isLoading}
         />
-        {activeView === 'ai-conversation' && isAIConversation ? (
+        {showInterventionButton ? (
           <button
             onClick={() => handleSendMessage(true)}
             disabled={isLoading || !inputMessage.trim()}
