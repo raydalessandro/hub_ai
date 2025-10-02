@@ -34,14 +34,14 @@ const Header = ({
   };
 
   return (
-    <div className=\"bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between\">
+    <div className="bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
       <div>
-        <h2 className=\"text-lg font-semibold\">{getTitle()}</h2>
-        <p className=\"text-xs text-gray-400\">{getSubtitle()}</p>
+        <h2 className="text-lg font-semibold">{getTitle()}</h2>
+        <p className="text-xs text-gray-400">{getSubtitle()}</p>
       </div>
       
       {activeView === 'ai-conversation' && (
-        <div className=\"flex gap-2\">
+        <div className="flex gap-2">
           {isAIConversation ? (
             <>
               <button
@@ -55,7 +55,7 @@ const Header = ({
               </button>
               <button
                 onClick={onStopConversation}
-                className=\"px-4 py-2 bg-red-600 hover:bg-red-700 rounded flex items-center gap-2\"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded flex items-center gap-2"
               >
                 <X size={18} />
                 Stop
@@ -64,7 +64,7 @@ const Header = ({
           ) : (
             <button
               onClick={onStartConversation}
-              className=\"px-4 py-2 bg-green-600 hover:bg-green-700 rounded flex items-center gap-2\"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded flex items-center gap-2"
               disabled={isLoading}
             >
               <MessageSquare size={18} />
