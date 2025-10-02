@@ -11,8 +11,7 @@ const InputArea = ({
   aiAgents,
   documents,
   addMessage,
-  setIsLoading,
-  apiKeys
+  setIsLoading
 }) => {
   const [inputMessage, setInputMessage] = useState('');
 
@@ -41,8 +40,7 @@ const InputArea = ({
           const response = await sendMessageToAI(
             agent.id,
             `${context}\n\nRespond naturally to the conversation. Latest message from Human: ${inputMessage}`,
-            conversationHistory,
-            apiKeys
+            conversationHistory
           );
 
           addMessage({
@@ -65,8 +63,7 @@ const InputArea = ({
         const response = await sendMessageToAI(
           aiId,
           `${context}\n\nThis is a private conversation. Respond to: ${inputMessage}`,
-          conversationHistory,
-          apiKeys
+          conversationHistory
         );
 
         addMessage({
